@@ -7,11 +7,12 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;600;700&family=IBM+Plex+Sans+Thai:wght@400;500;600&display=swap">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
 /* Layout: work bar on top; a form panel on the left feeds a read-only A4 preview on the right. The paper is always white; only the desk and form follow the theme. */
 :root{
   --desk:#dde1e7; --panel:#ffffff; --field:#f6f8fb; --fg:#1a1f26; --muted:#5b6574; --line:#cfd5dd;
-  --accent:#23508e; --accent-ink:#ffffff; --accent-soft:#e7eef8; --warn:#a4450c; --warn-bg:#fdf0e6; --ok:#2f6b3a;
+  --accent:#23508e; --accent-ink:#ffffff; --accent-soft:#e7eef8; --warn:#a4450c; --warn-bg:#fdf0e6; --ok:#2f6b3a; --ok-bg:#e8f3ea;
   --paper:#ffffff; --ink:#141414; --rule:#262626;
   --f-paper:"Sarabun","Tahoma","Leelawadee UI",sans-serif;
   --f-ui:"IBM Plex Sans Thai","Sarabun","Tahoma",sans-serif;
@@ -19,10 +20,10 @@
 }
 @media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
   --desk:#13171c; --panel:#1c2229; --field:#232a32; --fg:#e4e8ed; --muted:#9ca6b2; --line:#36404b;
-  --accent:#86aee6; --accent-ink:#0f1a2a; --accent-soft:#22324a; --warn:#f1a36b; --warn-bg:#3a2516; --ok:#8fd19c; color-scheme:dark}}
+  --accent:#86aee6; --accent-ink:#0f1a2a; --accent-soft:#22324a; --warn:#f1a36b; --warn-bg:#3a2516; --ok:#8fd19c; --ok-bg:#1d3324; color-scheme:dark}}
 :root[data-theme="dark"]{
   --desk:#13171c; --panel:#1c2229; --field:#232a32; --fg:#e4e8ed; --muted:#9ca6b2; --line:#36404b;
-  --accent:#86aee6; --accent-ink:#0f1a2a; --accent-soft:#22324a; --warn:#f1a36b; --warn-bg:#3a2516; --ok:#8fd19c; color-scheme:dark}
+  --accent:#86aee6; --accent-ink:#0f1a2a; --accent-soft:#22324a; --warn:#f1a36b; --warn-bg:#3a2516; --ok:#8fd19c; --ok-bg:#1d3324; color-scheme:dark}
 
 *{box-sizing:border-box}
 html,body{margin:0;height:100%}
@@ -36,6 +37,7 @@ body{background:var(--desk);color:var(--fg);font-family:var(--f-ui);font-size:14
 .status{font-size:12px;color:var(--muted);margin-left:auto}
 button{font:inherit;font-size:13px;color:var(--fg);background:transparent;border:1px solid var(--line);border-radius:6px;padding:6px 11px;cursor:pointer;line-height:1.25}
 button:hover{border-color:var(--accent)}
+button:disabled{opacity:.45;cursor:default}
 button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible,summary:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
 button.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);font-weight:600}
 button.armed{background:var(--warn-bg);color:var(--warn);border-color:var(--warn)}
@@ -56,6 +58,7 @@ details.sec>summary::before{content:"";width:7px;height:7px;border-right:2px sol
 details.sec[open]>summary::before{transform:rotate(45deg)}
 details.sec>summary .sub{font-weight:400;color:var(--muted);font-size:12px;margin-left:auto;text-align:right}
 .sec-body{padding:2px 12px 12px;display:flex;flex-direction:column;gap:10px}
+details.sec.imp{border-color:var(--accent)}
 
 .fg{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px 10px}
 .fg .full{grid-column:1/-1}
@@ -65,15 +68,36 @@ input,select,textarea{font:inherit;font-size:14px;color:var(--fg);background:var
 textarea{resize:vertical;min-height:58px;line-height:1.45}
 input:focus,select:focus,textarea:focus{border-color:var(--accent);outline:none;box-shadow:0 0 0 2px var(--accent-soft)}
 input[readonly]{background:transparent;border-style:dashed;color:var(--muted)}
+input:disabled{opacity:.5}
 input.num{text-align:right;font-variant-numeric:tabular-nums}
 .row2{display:flex;gap:8px;align-items:end;flex-wrap:wrap}
 .row2>*{flex:1;min-width:0}
 .row2>button{flex:none}
 .inline{display:flex;gap:6px}
 .inline select{flex:none;width:auto}
-.help{font-size:12px;color:var(--muted);line-height:1.5;margin:0}
+.help{font-size:12px;color:var(--muted);line-height:1.55;margin:0}
+.help b{color:var(--fg);font-weight:600}
 .logo-pick{display:flex;align-items:center;gap:10px}
 .logo-pick img{height:40px;max-width:110px;object-fit:contain;border:1px solid var(--line);border-radius:4px;background:#fff;padding:2px}
+
+/* import */
+.drop{border:1.5px dashed var(--line);border-radius:8px;padding:14px 12px;display:flex;flex-direction:column;align-items:center;gap:8px;text-align:center;cursor:pointer;background:var(--field)}
+.drop:hover,.drop.over{border-color:var(--accent);background:var(--accent-soft)}
+.drop .big{font-weight:600}
+.drop .sm{font-size:12px;color:var(--muted)}
+.btns{display:flex;gap:6px;flex-wrap:wrap}
+.btns button{flex:1}
+.result{border-radius:6px;padding:8px 10px;font-size:13px;line-height:1.5;background:var(--ok-bg);color:var(--ok)}
+.result.bad{background:var(--warn-bg);color:var(--warn)}
+.result ul{margin:4px 0 0;padding-left:18px}
+.blist{display:flex;flex-direction:column;gap:4px;max-height:260px;overflow-y:auto}
+.bi{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:0 10px;text-align:left;padding:7px 10px;border-radius:6px;width:100%}
+.bi .n{font-weight:600}
+.bi .c{color:var(--muted);font-size:12px;grid-column:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bi .t{grid-column:2;grid-row:1/3;align-self:center;font-variant-numeric:tabular-nums;font-weight:600}
+.bi[aria-current="true"]{background:var(--accent-soft);border-color:var(--accent)}
+.editing{font-size:12px;color:var(--accent);font-weight:600}
+body.dragging .drop{border-color:var(--accent);background:var(--accent-soft)}
 
 .item{border:1px solid var(--line);border-radius:8px;padding:8px 10px 10px;display:flex;flex-direction:column;gap:8px;background:var(--panel)}
 .item-hd{display:flex;align-items:center;gap:8px}
@@ -82,8 +106,7 @@ input.num{text-align:right;font-variant-numeric:tabular-nums}
 .item-act{display:flex;gap:3px}
 .item-act button{padding:2px 7px;font-size:12px;min-width:28px}
 .item-act button[data-act="del"]{color:var(--warn)}
-.add-row{display:flex;gap:6px;flex-wrap:wrap}
-.add-row button{flex:1}
+#items{display:flex;flex-direction:column;gap:8px}
 
 .sum{border:1px solid var(--line);border-radius:8px;padding:10px 12px;display:grid;grid-template-columns:1fr auto;gap:4px 12px;font-variant-numeric:tabular-nums;background:var(--accent-soft)}
 .sum .t{font-weight:700;font-size:15px}
@@ -183,12 +206,13 @@ input.num{text-align:right;font-variant-numeric:tabular-nums}
     <h1>Invoice Generator A4</h1>
     <div class="grp">
       <button type="button" class="primary" id="btnPrint">พิมพ์ / บันทึก PDF</button>
+      <button type="button" id="btnImpTop">นำเข้า Excel</button>
       <button type="button" id="btnNew" title="เก็บข้อมูลบริษัทและลูกค้าไว้ ล้างรายการสินค้า ใส่วันที่วันนี้และเลขที่ถัดไป">ใบใหม่ (เลขถัดไป)</button>
       <button type="button" id="btnExport">บันทึกไฟล์ข้อมูล</button>
       <button type="button" id="btnImport">เปิดไฟล์ข้อมูล</button>
-      <button type="button" id="btnReset">ล้างทั้งหมด</button>
+      <button type="button" id="btnReset" title="ล้างข้อมูลบริษัท ใบปัจจุบัน และใบที่นำเข้า (ลูกค้าและสินค้าที่บันทึกไว้ยังอยู่)">ล้างทั้งหมด</button>
     </div>
-    <span class="status" id="status"></span>
+    <span class="status" id="status" role="status"></span>
     <div class="tabs" role="group" aria-label="มุมมอง">
       <button type="button" data-view="form" aria-pressed="true">กรอกข้อมูล</button>
       <button type="button" data-view="preview" aria-pressed="false">ดูใบที่สร้าง</button>
@@ -198,9 +222,36 @@ input.num{text-align:right;font-variant-numeric:tabular-nums}
 
 <input type="file" id="logoFile" accept="image/*" hidden>
 <input type="file" id="jsonFile" accept=".json,application/json" hidden>
+<input type="file" id="xlsFile" accept=".xlsx,.xls,.xlsm,.csv" hidden>
 
 <div class="main">
 <form class="form" id="form" autocomplete="off" onsubmit="return false">
+
+  <details class="sec imp" id="secImport" open>
+    <summary>นำเข้าจาก Excel <span class="sub" id="sumImport"></span></summary>
+    <div class="sec-body">
+      <div class="drop" id="drop" role="button" tabindex="0" aria-label="เลือกไฟล์ Excel">
+        <span class="big">เลือกไฟล์ Excel หรือลากไฟล์มาวางที่นี่</span>
+        <span class="sm">.xlsx .xls .csv · ไฟล์ถูกอ่านในเครื่องนี้ ไม่ได้ส่งขึ้นเซิร์ฟเวอร์</span>
+      </div>
+      <div class="btns">
+        <button type="button" id="btnTemplate">ดาวน์โหลดแม่แบบ Excel</button>
+      </div>
+      <p class="help"><b>ชีต “รายการ”</b> 1 แถว = 1 รายการสินค้า แถวที่มีเลขที่ Invoice เดียวกันจะรวมเป็นใบเดียว ถ้าเว้นเลขที่ไว้ จะใช้เลขเดียวกับแถวบน
+        <b>ชีต “ลูกค้า”</b> และ <b>“สินค้า”</b> ใส่หรือไม่ก็ได้ ระบบจะเติมที่อยู่ลูกค้าและชื่อ/P/N/ราคาสินค้าจากรหัสให้เอง และจำไว้ใช้ครั้งต่อไป</p>
+      <div class="result" id="impResult" hidden></div>
+      <div id="batchBox" hidden>
+        <div class="row2" style="align-items:center;margin-bottom:6px">
+          <b id="batchTitle"></b>
+        </div>
+        <div class="blist" id="batchList"></div>
+        <div class="btns" style="margin-top:8px">
+          <button type="button" class="primary" id="btnPrintAll">พิมพ์ทุกใบ</button>
+          <button type="button" id="btnBatchClear">เอารายการนำเข้าออก</button>
+        </div>
+      </div>
+    </div>
+  </details>
 
   <details class="sec" id="secSeller">
     <summary>บริษัทผู้ออก Invoice <span class="sub" id="sumSeller"></span></summary>
@@ -223,6 +274,7 @@ input.num{text-align:right;font-variant-numeric:tabular-nums}
       </div>
       <label class="f">ข้อความช่องหมายเหตุล่างซ้าย<textarea id="s-note" data-bind="seller.note" rows="3"></textarea></label>
       <label class="f">ข้อความท้ายเอกสาร (ถ้ามี)<input id="s-foot" data-bind="seller.footer"></label>
+      <p class="help">ข้อมูลบริษัทใช้ร่วมกันทุกใบ รวมถึงใบที่นำเข้าจาก Excel</p>
     </div>
   </details>
 
@@ -248,7 +300,7 @@ input.num{text-align:right;font-variant-numeric:tabular-nums}
   </details>
 
   <details class="sec" open>
-    <summary>ข้อมูลเอกสาร</summary>
+    <summary>ข้อมูลเอกสาร <span class="editing" id="editing"></span></summary>
     <div class="sec-body">
       <div class="fg">
         <label class="f full">ประเภทเอกสาร<select id="d-type" data-bind="doc.type"></select></label>
@@ -269,11 +321,11 @@ input.num{text-align:right;font-variant-numeric:tabular-nums}
     <summary>รายการสินค้า <span class="sub" id="sumItems"></span></summary>
     <div class="sec-body">
       <div id="items"></div>
-      <div class="add-row">
+      <div class="btns">
         <button type="button" id="btnAdd">+ เพิ่มรายการ</button>
       </div>
       <details class="sec">
-        <summary>วางรายการจาก Excel</summary>
+        <summary>วางรายการจาก Excel (คัดลอก-วาง)</summary>
         <div class="sec-body">
           <p class="help">คัดลอกจาก Excel ได้หลายแถว เรียงคอลัมน์: รหัสสินค้า | ชื่อสินค้า | P/N ลูกค้า | เลขที่ PO | จำนวน | หน่วย | ราคา/หน่วย</p>
           <textarea id="pasteBox" rows="4" placeholder="วางข้อมูลที่นี่ (Ctrl+V)"></textarea>
@@ -316,7 +368,9 @@ const KEY = "invoice-generator-v1";
 const $ = s => document.querySelector(s);
 const pad = n => String(n).padStart(2,"0");
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
-const isoToday = () => { const d = new Date(); return d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate()); };
+const isoOf = (y,m,d) => y+"-"+pad(m)+"-"+pad(d);
+const isoToday = () => { const d = new Date(); return isoOf(d.getFullYear(), d.getMonth()+1, d.getDate()); };
+const clone = o => JSON.parse(JSON.stringify(o));
 
 const TYPES = [
   ["ใบกำกับภาษี / ใบเสร็จรับเงิน / ใบส่งของ","Tax Invoice / Receipt / Delivery Order"],
@@ -328,14 +382,18 @@ const TYPES = [
 $("#d-type").innerHTML = TYPES.map((t,i) => `<option value="${i}">${esc(t[0])}</option>`).join("");
 
 const blankItem = (unit) => ({code:"",desc:"",pn:"",po:"",qty:"",unit:unit||"PCS",price:""});
+const blankSeller = () => ({th:"",en:"",addr:"",tel:"",fax:"",tax:"",branchType:"hq",branchNo:"",logo:"",note:"",footer:""});
+const blankCust = () => ({code:"",name:"",addr:"",tax:"",branchType:"hq",branchNo:"",contact:""});
+function sampleSeller(){
+  return {th:"บริษัท ตัวอย่าง รับเบอร์ พาร์ท จำกัด", en:"EXAMPLE RUBBER PARTS CO., LTD.",
+    addr:"99/9 หมู่ 1 ถนนตัวอย่าง ตำบลตัวอย่าง อำเภอเมือง จังหวัดระยอง 21000",
+    tel:"038-000000", fax:"038-000001", tax:"0000000000000", branchType:"hq", branchNo:"", logo:"",
+    note:"หมายเหตุ กรุณาอย่าหักภาษี ณ ที่จ่าย\nโปรดชำระในนาม \"บริษัท ตัวอย่าง รับเบอร์ พาร์ท จำกัด\"\nใบเสร็จรับเงินฉบับนี้จะสมบูรณ์ต่อเมื่อได้รับชำระเรียบร้อยแล้ว",
+    footer:""};
+}
 function sample(){
   return {
     vat:"7",
-    seller:{th:"บริษัท ตัวอย่าง รับเบอร์ พาร์ท จำกัด", en:"EXAMPLE RUBBER PARTS CO., LTD.",
-      addr:"99/9 หมู่ 1 ถนนตัวอย่าง ตำบลตัวอย่าง อำเภอเมือง จังหวัดระยอง 21000",
-      tel:"038-000000", fax:"038-000001", tax:"0000000000000", branchType:"hq", branchNo:"", logo:"",
-      note:"หมายเหตุ กรุณาอย่าหักภาษี ณ ที่จ่าย\nโปรดชำระในนาม \"บริษัท ตัวอย่าง รับเบอร์ พาร์ท จำกัด\"\nใบเสร็จรับเงินฉบับนี้จะสมบูรณ์ต่อเมื่อได้รับชำระเรียบร้อยแล้ว",
-      footer:""},
     cust:{code:"C0001", name:"บริษัท ลูกค้าตัวอย่าง จำกัด", addr:"123 หมู่ 4 ถนนตัวอย่าง ตำบลตัวอย่าง\nอำเภอเมือง จังหวัดฉะเชิงเทรา 24000",
       tax:"0000000000000", branchType:"branch", branchNo:"00001", contact:""},
     doc:{type:"0", no:"INV2610-0001", date:isoToday(), term:"30", po:"", ref:"", copy:"original", era:"ce", remark:""},
@@ -349,35 +407,41 @@ function sample(){
   };
 }
 function blankInvoice(){
-  return {vat:"7",
-    seller:{th:"",en:"",addr:"",tel:"",fax:"",tax:"",branchType:"hq",branchNo:"",logo:"",note:"",footer:""},
-    cust:{code:"",name:"",addr:"",tax:"",branchType:"hq",branchNo:"",contact:""},
+  return {vat:"7", cust:blankCust(),
     doc:{type:"0",no:"",date:isoToday(),term:"30",po:"",ref:"",copy:"none",era:"ce",remark:""},
     sign:{prep:"",del:"",useDate:false}, items:[blankItem()]};
 }
 function merge(base, d){
-  const out = base;
-  if (!d || typeof d !== "object") return out;
-  for (const k of ["seller","cust","doc","sign"]) if (d[k] && typeof d[k] === "object") Object.assign(out[k], d[k]);
-  if (d.vat !== undefined) out.vat = String(d.vat);
-  if (Array.isArray(d.items)) out.items = d.items.map(it => Object.assign(blankItem(), it));
-  if (!out.items.length) out.items = [blankItem()];
-  return out;
+  if (!d || typeof d !== "object") return base;
+  for (const k of ["cust","doc","sign"]) if (d[k] && typeof d[k] === "object") Object.assign(base[k], d[k]);
+  if (d.vat !== undefined) base.vat = String(d.vat);
+  if (Array.isArray(d.items)) base.items = d.items.map(it => Object.assign(blankItem(), it));
+  if (!base.items.length) base.items = [blankItem()];
+  return base;
 }
 
 /* ---------- storage ---------- */
-let DB = {inv:null, customers:[], catalog:{}};
+let DB = {seller:null, inv:null, customers:[], catalog:{}, batch:[], batchIdx:-1};
 try { const raw = JSON.parse(localStorage.getItem(KEY)); if (raw && typeof raw === "object") DB = Object.assign(DB, raw); } catch(e){}
-let S = DB.inv ? merge(blankInvoice(), DB.inv) : sample();
+if (!Array.isArray(DB.customers)) DB.customers = [];
+if (!DB.catalog || typeof DB.catalog !== "object") DB.catalog = {};
+if (!Array.isArray(DB.batch)) DB.batch = [];
+if (!DB.seller) DB.seller = (DB.inv && DB.inv.seller) ? Object.assign(blankSeller(), DB.inv.seller) : sampleSeller();
+DB.batch = DB.batch.map(b => merge(blankInvoice(), b));
+let S;
+if (DB.batchIdx >= 0 && DB.batch[DB.batchIdx]) S = DB.batch[DB.batchIdx];
+else { DB.batchIdx = -1; S = DB.inv ? merge(blankInvoice(), DB.inv) : sample(); }
+
 let saveT;
 function save(){
   clearTimeout(saveT);
   saveT = setTimeout(() => {
-    DB.inv = S;
-    try { localStorage.setItem(KEY, JSON.stringify(DB)); $("#status").textContent = "บันทึกในเครื่องนี้แล้ว"; }
-    catch(e){ $("#status").textContent = "บันทึกอัตโนมัติไม่ได้ ใช้ปุ่ม “บันทึกไฟล์ข้อมูล” แทน"; }
+    DB.inv = DB.batchIdx >= 0 ? null : S;
+    try { localStorage.setItem(KEY, JSON.stringify(DB)); }
+    catch(e){ setStatus("บันทึกอัตโนมัติไม่ได้ ใช้ปุ่ม “บันทึกไฟล์ข้อมูล” แทน"); }
   }, 300);
 }
+function setStatus(t){ $("#status").textContent = t; }
 
 /* ---------- numbers ---------- */
 const num = s => { const v = parseFloat(String(s ?? "").replace(/,/g,"")); return isFinite(v) ? v : 0; };
@@ -417,51 +481,50 @@ function bahtText(st){
 }
 window.__bahtText = bahtText;
 
-function calc(){
-  const lines = S.items.map(it => {
+const hasContent = it => it.code || it.desc || it.pn || it.po || String(it.qty).trim() || String(it.price).trim();
+function calc(inv){
+  const lines = inv.items.map(it => {
     const has = String(it.qty).trim() !== "" || String(it.price).trim() !== "";
     return has ? Math.round(+(num(it.qty)*num(it.price)*100).toFixed(6)) : null;
   });
   const sub = lines.reduce((a,b) => a + (b||0), 0);
-  const qty = S.items.reduce((a,it) => a + num(it.qty), 0);
-  const vat = Math.round(+(sub*num(S.vat)/100).toFixed(6));
+  const qty = inv.items.reduce((a,it) => a + num(it.qty), 0);
+  const vat = Math.round(+(sub*num(inv.vat)/100).toFixed(6));
   return {lines, sub, vat, total: sub+vat, qty};
 }
 
 /* ---------- dates ---------- */
-function fmtISO(iso){
+function fmtISO(iso, era){
   const m = String(iso||"").match(/^(\d{4})-(\d{2})-(\d{2})$/);
   if (!m) return "";
-  return m[3]+"/"+m[2]+"/"+(+m[1] + (S.doc.era === "be" ? 543 : 0));
+  return m[3]+"/"+m[2]+"/"+(+m[1] + (era === "be" ? 543 : 0));
 }
-function dueISO(){
-  const m = String(S.doc.date||"").match(/^(\d{4})-(\d{2})-(\d{2})$/);
-  const t = parseInt(S.doc.term,10);
+function dueISO(inv){
+  const m = String(inv.doc.date||"").match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  const t = parseInt(inv.doc.term,10);
   if (!m || !isFinite(t)) return "";
   const d = new Date(+m[1], +m[2]-1, +m[3] + t);
-  return d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate());
+  return isoOf(d.getFullYear(), d.getMonth()+1, d.getDate());
 }
-const branchText = (o, th) => o.branchType === "branch"
-  ? (th ? "สาขาที่ " : "Branch ") + String(o.branchNo||"").padStart(5,"0")
-  : (th ? "สำนักงานใหญ่" : "Head Office");
+const branchText = (o) => o.branchType === "branch" ? "สาขาที่ " + String(o.branchNo||"").padStart(5,"0") : "สำนักงานใหญ่";
 
 /* ---------- form binding ---------- */
+const rootOf = p => p.startsWith("seller.") ? DB : S;
 const getP = (o,p) => p.split(".").reduce((a,k) => a == null ? a : a[k], o);
 const setP = (o,p,v) => { const ks = p.split("."), last = ks.pop(); ks.reduce((a,k) => a[k], o)[last] = v; };
 document.querySelectorAll("[data-bind]").forEach(el => {
-  el.addEventListener(el.tagName === "SELECT" || el.type === "date" ? "change" : "input", () => {
-    setP(S, el.dataset.bind, el.value); syncBranchUI(); changed();
-  });
-  if (el.type === "date") el.addEventListener("input", () => { setP(S, el.dataset.bind, el.value); changed(); });
+  const h = () => { const p = el.dataset.bind; setP(rootOf(p), p, el.value); syncBranchUI(); changed(); };
+  el.addEventListener("input", h);
+  el.addEventListener("change", h);
 });
 $("#g-date").addEventListener("change", e => { S.sign.useDate = e.target.checked; changed(); });
 function fillForm(){
-  document.querySelectorAll("[data-bind]").forEach(el => { el.value = getP(S, el.dataset.bind) ?? ""; });
+  document.querySelectorAll("[data-bind]").forEach(el => { const p = el.dataset.bind; el.value = getP(rootOf(p), p) ?? ""; });
   $("#g-date").checked = !!S.sign.useDate;
   syncBranchUI(); renderLogo();
 }
 function syncBranchUI(){
-  $("#s-bn").disabled = S.seller.branchType !== "branch";
+  $("#s-bn").disabled = DB.seller.branchType !== "branch";
   $("#c-bn").disabled = S.cust.branchType !== "branch";
 }
 
@@ -492,8 +555,8 @@ function renderItems(){
   });
   updateItemAmounts();
 }
-function updateItemAmounts(c){
-  c = c || calc();
+function updateItemAmounts(){
+  const c = calc(S);
   itemsEl.querySelectorAll(".item").forEach(d => {
     const a = c.lines[+d.dataset.i];
     d.querySelector(".amt").textContent = a == null ? "" : money(a/100) + " ฿";
@@ -508,19 +571,13 @@ itemsEl.addEventListener("input", e => {
 itemsEl.addEventListener("change", e => {
   const d = e.target.closest(".item"), k = e.target.dataset.k;
   if (!d || !k) return;
-  const i = +d.dataset.i, it = S.items[i];
+  const it = S.items[+d.dataset.i];
   if (k === "qty" || k === "price"){
     const v = e.target.value.trim();
     if (v !== "" && isFinite(parseFloat(v.replace(/,/g,"")))){ it[k] = money(num(v)); e.target.value = it[k]; }
   }
-  if (k === "code"){
-    const hit = DB.catalog[it.code.trim()];
-    if (hit){
-      for (const f of ["desc","pn","unit","price"]) if (!String(it[f]).trim() || (f==="unit" && it.unit==="PCS")){
-        it[f] = hit[f] || it[f];
-        const inp = d.querySelector(`[data-k="${f}"]`); if (inp) inp.value = it[f];
-      }
-    }
+  if (k === "code" && fillFromCatalog(it)){
+    for (const f of ["desc","pn","unit","price"]){ const inp = d.querySelector(`[data-k="${f}"]`); if (inp) inp.value = it[f]; }
   }
   learn(it); changed();
 });
@@ -532,8 +589,8 @@ itemsEl.addEventListener("click", e => {
   if (a === "up" && i > 0) [S.items[i-1], S.items[i]] = [S.items[i], S.items[i-1]];
   if (a === "down" && i < S.items.length-1) [S.items[i+1], S.items[i]] = [S.items[i], S.items[i+1]];
   renderItems(); changed();
-  const t = itemsEl.querySelector(`.item[data-i="${a==="up"?i-1:a==="down"?i+1:a==="dup"?i+1:Math.min(i,S.items.length-1)}"] [data-k="code"]`);
-  t && t.focus();
+  const ti = a==="up" ? i-1 : a==="down" ? i+1 : a==="dup" ? i+1 : Math.min(i,S.items.length-1);
+  const t = itemsEl.querySelector(`.item[data-i="${ti}"] [data-k="code"]`); t && t.focus();
 });
 $("#btnAdd").addEventListener("click", () => {
   const last = S.items[S.items.length-1];
@@ -549,15 +606,22 @@ $("#btnPaste").addEventListener("click", () => {
     const c = l.split("\t"); const it = blankItem();
     keys.forEach((k,j) => { if (c[j] !== undefined && c[j].trim() !== "") it[k] = c[j].trim(); });
     for (const k of ["qty","price"]) if (it[k] !== "" && isFinite(parseFloat(it[k].replace(/,/g,"")))) it[k] = money(num(it[k]));
-    learn(it); return it;
+    fillFromCatalog(it); learn(it); return it;
   });
-  S.items = S.items.filter(it => it.code || it.desc || it.qty || it.price).concat(add);
+  S.items = S.items.filter(hasContent).concat(add);
   $("#pasteBox").value = "";
   renderItems(); changed();
-  $("#status").textContent = "เพิ่ม " + add.length + " รายการจากข้อมูลที่วางแล้ว";
+  setStatus("เพิ่ม " + add.length + " รายการจากข้อมูลที่วางแล้ว");
 });
 
 /* product memory */
+function fillFromCatalog(it){
+  const hit = DB.catalog[String(it.code||"").trim()];
+  if (!hit) return false;
+  for (const f of ["desc","pn","price"]) if (!String(it[f]||"").trim() && hit[f]) it[f] = hit[f];
+  if ((!String(it.unit||"").trim() || it.unit === "PCS") && hit.unit) it.unit = hit.unit;
+  return true;
+}
 function learn(it){
   const code = String(it.code||"").trim();
   if (!code || !String(it.desc||"").trim()) return;
@@ -570,50 +634,53 @@ function renderCatalog(){
 
 /* ---------- customers ---------- */
 function renderCustomers(){
-  const sel = $("#custPick");
-  sel.innerHTML = '<option value="">— เลือก —</option>' + DB.customers.map((c,i) =>
+  $("#custPick").innerHTML = '<option value="">— เลือก —</option>' + DB.customers.map((c,i) =>
     `<option value="${i}">${esc((c.code ? c.code + " · " : "") + c.name)}</option>`).join("");
+}
+const custKey = c => String(c.code||"").trim() ? "c:" + String(c.code).trim().toLowerCase() : "n:" + String(c.name||"").trim();
+function upsertCustomer(c){
+  const i = DB.customers.findIndex(x => custKey(x) === custKey(c));
+  if (i >= 0) DB.customers[i] = Object.assign({}, DB.customers[i], c); else DB.customers.push(Object.assign({}, c));
 }
 $("#custPick").addEventListener("change", e => {
   const c = DB.customers[+e.target.value]; if (e.target.value === "" || !c) return;
-  S.cust = Object.assign({}, c); fillForm(); changed();
-  $("#status").textContent = "ใช้ข้อมูลลูกค้า " + c.name;
+  S.cust = Object.assign(blankCust(), c); delete S.cust.term;
+  if (c.term) S.doc.term = String(c.term);
+  fillForm(); changed();
+  setStatus("ใช้ข้อมูลลูกค้า " + c.name);
 });
 $("#btnCustSave").addEventListener("click", () => {
-  if (!S.cust.name.trim()){ $("#status").textContent = "ใส่ชื่อลูกค้าก่อนบันทึก"; return; }
-  const key = c => (c.code || "").trim() + "|" + (c.name || "").trim();
-  const i = DB.customers.findIndex(c => key(c) === key(S.cust));
-  if (i >= 0) DB.customers[i] = Object.assign({}, S.cust); else DB.customers.push(Object.assign({}, S.cust));
-  renderCustomers(); save();
-  $("#status").textContent = "บันทึกลูกค้า " + S.cust.name + " แล้ว";
+  if (!S.cust.name.trim()){ setStatus("ใส่ชื่อลูกค้าก่อนบันทึก"); return; }
+  upsertCustomer(S.cust); renderCustomers(); save();
+  setStatus("บันทึกลูกค้า " + S.cust.name + " แล้ว");
 });
 $("#btnCustDel").addEventListener("click", () => {
-  const v = $("#custPick").value; if (v === ""){ $("#status").textContent = "เลือกลูกค้าที่จะลบจากรายการก่อน"; return; }
+  const v = $("#custPick").value; if (v === ""){ setStatus("เลือกลูกค้าที่จะลบจากรายการก่อน"); return; }
   const c = DB.customers.splice(+v,1)[0]; renderCustomers(); save();
-  $("#status").textContent = "ลบ " + c.name + " ออกจากรายการแล้ว";
+  setStatus("ลบ " + c.name + " ออกจากรายการแล้ว");
 });
 
 /* ---------- logo ---------- */
 function renderLogo(){
   const img = $("#logoImg");
-  img.hidden = !S.seller.logo; $("#btnLogoRm").hidden = !S.seller.logo;
-  if (S.seller.logo) img.src = S.seller.logo; else img.removeAttribute("src");
+  img.hidden = !DB.seller.logo; $("#btnLogoRm").hidden = !DB.seller.logo;
+  if (DB.seller.logo) img.src = DB.seller.logo; else img.removeAttribute("src");
 }
 $("#btnLogo").addEventListener("click", () => $("#logoFile").click());
-$("#btnLogoRm").addEventListener("click", () => { S.seller.logo = ""; renderLogo(); changed(); });
+$("#btnLogoRm").addEventListener("click", () => { DB.seller.logo = ""; renderLogo(); changed(); });
 $("#logoFile").addEventListener("change", e => {
   const f = e.target.files[0]; if (!f) return;
   const rd = new FileReader();
-  rd.onload = () => { S.seller.logo = rd.result; renderLogo(); changed(); };
+  rd.onload = () => { DB.seller.logo = rd.result; renderLogo(); changed(); };
   rd.readAsDataURL(f); e.target.value = "";
 });
 
 /* ---------- sheet rendering ---------- */
-function sheetHTML(rows, p, n, last, c){
-  const s = S.seller, cu = S.cust, d = S.doc, t = TYPES[+d.type] || TYPES[0];
+function sheetHTML(inv, rows, p, n, last, c){
+  const s = DB.seller, cu = inv.cust, d = inv.doc, t = TYPES[+d.type] || TYPES[0];
   const tel = [s.tel && "TEL. : " + s.tel, s.fax && "FAX. : " + s.fax].filter(Boolean).join("   ");
   const copy = {original:"ต้นฉบับ / ORIGINAL", copy:"สำเนา / COPY"}[d.copy];
-  const docDate = fmtISO(d.date);
+  const docDate = fmtISO(d.date, d.era);
   const rowsHTML = rows.map(r => `<div class="g row">
       <div class="c no">${r.i+1}</div>
       <div class="c">${esc(r.it.code)}</div>
@@ -633,7 +700,7 @@ function sheetHTML(rows, p, n, last, c){
       ${s.en ? `<div class="s-en">${esc(s.en)}</div>` : ""}
       ${s.addr ? `<div class="s-addr pre">${esc(s.addr)}</div>` : ""}
       ${tel ? `<div class="s-tel">${esc(tel)}</div>` : ""}
-      <div class="s-tax">เลขประจำตัวผู้เสียภาษีอากร : ${esc(s.tax)} &nbsp;(${branchText(s,true)})</div>
+      <div class="s-tax">เลขประจำตัวผู้เสียภาษีอากร : ${esc(s.tax)} &nbsp;(${branchText(s)})</div>
     </div>
     <div class="titlebox">
       ${copy ? `<div class="copytag">${copy}</div>` : ""}
@@ -646,14 +713,14 @@ function sheetHTML(rows, p, n, last, c){
       <div class="k">ชื่อลูกค้า/Name :</div><div class="v">${esc(cu.name)}</div>
       <div class="k">ที่อยู่/Address :</div><div class="v addr pre">${esc(cu.addr)}</div>
       <div class="k">เลขประจำตัวผู้เสียภาษี/Tax ID :</div><div class="v">${esc(cu.tax)}</div>
-      <div class="k">สำนักงาน/Branch :</div><div class="v">${cu.name || cu.tax ? branchText(cu,true) : ""}</div>
+      <div class="k">สำนักงาน/Branch :</div><div class="v">${cu.name || cu.tax ? branchText(cu) : ""}</div>
       <div class="k">ผู้ติดต่อ/Contact :</div><div class="v">${esc(cu.contact)}</div>
     </div>
     <div class="box kv">
       <div class="k">วันที่/Date :</div><div class="v">${docDate}</div>
       <div class="k">เลขที่/No. :</div><div class="v">${esc(d.no)}</div>
       <div class="k">กำหนดชำระเงิน<small>Term</small></div><div class="v">${String(d.term).trim() !== "" ? esc(d.term) + " วัน" : ""}</div>
-      <div class="k">ครบกำหนด<small>Due Date</small></div><div class="v">${fmtISO(dueISO())}</div>
+      <div class="k">ครบกำหนด<small>Due Date</small></div><div class="v">${fmtISO(dueISO(inv), d.era)}</div>
       <div class="k">P/O No. :</div><div class="v">${esc(d.po)}</div>
       <div class="k">Ref No. :</div><div class="v">${esc(d.ref)}</div>
     </div>
@@ -671,15 +738,15 @@ function sheetHTML(rows, p, n, last, c){
       <div class="rem"><div class="lbl">หมายเหตุ/Remark</div><div class="qlbl">รวมจำนวน</div><div class="rtx pre">${esc(d.remark)}</div></div>
       <div class="qt bl">${v(money(c.qty))}</div>
       <div class="lab bl">รวมราคาทั้งสิ้น<br>SUB TOTAL</div><div class="val bl">${v(money(c.sub/100))}</div>
-      <div class="lab bl bt" style="grid-row:2">ภาษีมูลค่าเพิ่ม<br>VAT ${esc(String(S.vat).trim() || "0")}%</div><div class="val bl bt" style="grid-row:2">${v(money(c.vat/100))}</div>
+      <div class="lab bl bt" style="grid-row:2">ภาษีมูลค่าเพิ่ม<br>VAT ${esc(String(inv.vat).trim() || "0")}%</div><div class="val bl bt" style="grid-row:2">${v(money(c.vat/100))}</div>
       <div class="words bt">${last ? "(" + bahtText(c.total) + ")" : "(มีต่อหน้าถัดไป / Continued)"}</div>
       <div class="lab bl bt">รวมจำนวนเงินทั้งสิ้น<br>TOTAL AMOUNT</div><div class="val bl bt grand">${v(money(c.total/100))}</div>
     </div>
   </section>
   <section class="sign">
     <div class="note pre">${esc(s.note)}</div>
-    <div class="sig"><div class="who">${esc(S.sign.prep)}</div><div class="dots"></div><div class="role">ผู้จัดทำ/PREPARED BY</div><div class="dt">วันที่ <span>${S.sign.useDate ? docDate : ""}</span></div></div>
-    <div class="sig"><div class="who">${esc(S.sign.del)}</div><div class="dots"></div><div class="role">ผู้ส่งสินค้า/DELIVERY BY</div><div class="dt">วันที่ <span>${S.sign.useDate ? docDate : ""}</span></div></div>
+    <div class="sig"><div class="who">${esc(inv.sign.prep)}</div><div class="dots"></div><div class="role">ผู้จัดทำ/PREPARED BY</div><div class="dt">วันที่ <span>${inv.sign.useDate ? docDate : ""}</span></div></div>
+    <div class="sig"><div class="who">${esc(inv.sign.del)}</div><div class="dots"></div><div class="role">ผู้ส่งสินค้า/DELIVERY BY</div><div class="dt">วันที่ <span>${inv.sign.useDate ? docDate : ""}</span></div></div>
     <div class="sig"><div class="who"></div><div class="dots"></div><div class="role">ผู้รับสินค้า/RECEIVED BY</div><div class="dt">วันที่ <span></span></div></div>
   </section>
   <div class="foot">${esc(s.footer)}</div>
@@ -687,14 +754,14 @@ function sheetHTML(rows, p, n, last, c){
 }
 
 const pagesEl = $("#pages");
-let pageCount = 1;
-function renderPreview(){
-  const c = calc();
-  let rest = S.items.map((it,i) => ({it,i})).filter(r => r.it.code || r.it.desc || r.it.pn || r.it.po || String(r.it.qty).trim() || String(r.it.price).trim());
+/* Lays one invoice out into as many A4 pages as its rows need; returns {html, pages, c}. Uses pagesEl as a measuring area. */
+function invoicePages(inv){
+  const c = calc(inv);
+  let rest = inv.items.map((it,i) => ({it,i})).filter(r => hasContent(r.it));
   const chunks = [];
   let guard = 0;
-  while (rest.length && guard++ < 100){
-    pagesEl.innerHTML = sheetHTML(rest, 1, 1, true, c);
+  while (rest.length && guard++ < 200){
+    pagesEl.innerHTML = sheetHTML(inv, rest, 1, 1, true, c);
     const ib = pagesEl.querySelector(".ibody"), lim = ib.clientHeight;
     let n = 0;
     for (const r of ib.querySelectorAll(".row")){ if (r.offsetTop + r.offsetHeight <= lim + 0.5) n++; else break; }
@@ -702,9 +769,13 @@ function renderPreview(){
     chunks.push(rest.slice(0,n)); rest = rest.slice(n);
   }
   if (!chunks.length) chunks.push([]);
-  pageCount = chunks.length;
-  pagesEl.innerHTML = chunks.map((ch,pi) => sheetHTML(ch, pi+1, chunks.length, pi === chunks.length-1, c)).join("");
-  return c;
+  return {html: chunks.map((ch,pi) => sheetHTML(inv, ch, pi+1, chunks.length, pi === chunks.length-1, c)).join(""), pages: chunks.length, c};
+}
+let pageCount = 1;
+function renderPreview(){
+  const r = invoicePages(S);
+  pagesEl.innerHTML = r.html; pageCount = r.pages;
+  return r.c;
 }
 
 /* ---------- form summary ---------- */
@@ -714,8 +785,8 @@ function renderSummary(c){
   $("#fVat").textContent = money(c.vat/100);
   $("#fTotal").textContent = money(c.total/100) + " บาท";
   $("#fWords").textContent = "(" + bahtText(c.total) + ")";
-  $("#d-due").value = fmtISO(dueISO());
-  $("#sumSeller").textContent = S.seller.th || "ยังไม่ได้กรอก";
+  $("#d-due").value = fmtISO(dueISO(S), S.doc.era);
+  $("#sumSeller").textContent = DB.seller.th || "ยังไม่ได้กรอก";
   $("#sumCust").textContent = S.cust.name || "";
   $("#sumItems").textContent = S.items.length + " รายการ · " + money(c.total/100) + " บาท";
   const pi = $("#pageInfo");
@@ -723,26 +794,300 @@ function renderSummary(c){
   pi.textContent = "รายการยาวเกิน 1 หน้า ระบบแบ่งเป็น " + pageCount + " หน้าให้แล้ว ยอดรวมจะอยู่หน้าสุดท้าย";
 }
 
+/* ---------- batch list ---------- */
+function renderBatch(){
+  const box = $("#batchBox"), n = DB.batch.length;
+  box.hidden = !n;
+  $("#editing").textContent = DB.batchIdx >= 0 ? "ใบที่ " + (DB.batchIdx+1) + "/" + n + " จาก Excel" : "";
+  $("#sumImport").textContent = n ? n + " ใบ" : "";
+  if (!n) return;
+  $("#batchTitle").textContent = "ใบจากไฟล์ Excel (" + n + " ใบ) คลิกเพื่อเปิดแก้ไข";
+  $("#btnPrintAll").textContent = "พิมพ์ทุกใบ (" + n + " ใบ)";
+  $("#batchList").innerHTML = DB.batch.map((b,i) => {
+    const c = calc(b), cnt = b.items.filter(hasContent).length;
+    return `<button type="button" class="bi" data-bi="${i}" aria-current="${i===DB.batchIdx}">
+      <span class="n">${esc(b.doc.no || "(ไม่มีเลขที่)")}</span>
+      <span class="c">${esc(b.cust.name || b.cust.code || "ไม่มีข้อมูลลูกค้า")} · ${cnt} รายการ · ${fmtISO(b.doc.date, b.doc.era)}</span>
+      <span class="t">${money(c.total/100)}</span></button>`;
+  }).join("");
+}
+$("#batchList").addEventListener("click", e => {
+  const b = e.target.closest("[data-bi]"); if (!b) return;
+  DB.batchIdx = +b.dataset.bi; S = DB.batch[DB.batchIdx];
+  fillForm(); renderItems(); changed();
+  if (document.body.dataset.view === "form" && window.matchMedia("(max-width:900px)").matches) setStatus("เปิดใบ " + S.doc.no + " แล้ว กด “ดูใบที่สร้าง” เพื่อดูตัวเอกสาร");
+});
+let printingAll = false;
+$("#btnPrintAll").addEventListener("click", () => {
+  let html = "", pages = 0;
+  DB.batch.forEach(b => { const r = invoicePages(b); html += r.html; pages += r.pages; });
+  pagesEl.innerHTML = html; printingAll = true;
+  setStatus("พิมพ์ " + DB.batch.length + " ใบ รวม " + pages + " หน้า");
+  window.print();
+  setTimeout(() => { if (printingAll){ printingAll = false; changed(); } }, 500);
+});
+window.addEventListener("afterprint", () => { if (printingAll){ printingAll = false; changed(); } });
+armed($("#btnBatchClear"), "เอารายการนำเข้าออก", () => {
+  DB.batch = []; DB.batchIdx = -1; S = clone(S);
+  $("#impResult").hidden = true; changed();
+  setStatus("เอารายการนำเข้าออกแล้ว ใบที่เปิดอยู่ยังคงอยู่ในฟอร์ม");
+});
+
+/* ---------- Excel import ---------- */
+const norm = h => String(h ?? "").toLowerCase().replace(/[\s.()\[\]_\-:*#]/g,"");
+const ALIAS = {
+  inv:["เลขที่invoice","เลขที่ใบกำกับ","เลขที่ใบกำกับภาษี","เลขที่เอกสาร","invoiceno","invoice","invno","เลขที่"],
+  date:["วันที่","date","วันที่เอกสาร","invoicedate"],
+  custCode:["รหัสลูกค้า","customercode","custcode","customerid"],
+  custName:["ชื่อลูกค้า","customername","customer","ลูกค้า"],
+  headPO:["p/ono","p/o","p/onoหัวเอกสาร","poหัวเอกสาร","customerpo"],
+  ref:["refno","ref","เลขอ้างอิง","reference"],
+  code:["รหัสสินค้า","productcode","itemcode","partcode"],
+  desc:["ชื่อสินค้า","ชื่อสินค้าen","description","desc","รายละเอียด","productname","itemname"],
+  pn:["p/nลูกค้า","p/n","pn","partno","partnumber","p/nของลูกค้า","customerp/n"],
+  po:["เลขที่po","pono","po","ponumber","poรายการ"],
+  qty:["จำนวน","qty","quantity"],
+  unit:["หน่วย","unit","uom"],
+  price:["ราคา/หน่วย","ราคาต่อหน่วย","unitprice","unit/price","price","ราคา"],
+  remark:["หมายเหตุ","remark","remarks"],
+  term:["เครดิตวัน","เครดิต","term","termวัน","กำหนดชำระวัน","กำหนดชำระ"],
+  vat:["vat%","vat"],
+  addr:["ที่อยู่","address"],
+  tax:["เลขประจำตัวผู้เสียภาษี","taxid","เลขผู้เสียภาษี","เลขประจำตัวผู้เสียภาษีอากร"],
+  branch:["สาขา","สำนักงาน","branch","สำนักงาน/สาขา"],
+  contact:["ผู้ติดต่อ","contact"]
+};
+const ALIAS_MAP = {};
+for (const k in ALIAS) ALIAS[k].forEach(a => { ALIAS_MAP[norm(a)] = k; });
+
+function findHeader(aoa){
+  let best = null;
+  for (let i = 0; i < Math.min(15, aoa.length); i++){
+    const map = {}; let cnt = 0;
+    (aoa[i] || []).forEach((cell,j) => { const k = ALIAS_MAP[norm(cell)]; if (k && map[k] == null){ map[k] = j; cnt++; } });
+    if (cnt >= 2 && (!best || cnt > best.cnt)) best = {row:i, map, cnt};
+  }
+  return best;
+}
+const str = v => v == null ? "" : String(v).trim();
+function excelDate(v){
+  if (typeof v === "number" && v > 59 && window.XLSX){
+    const d = XLSX.SSF.parse_date_code(v);
+    if (d && d.y) return isoOf(d.y > 2400 ? d.y - 543 : d.y, d.m, d.d);
+  }
+  const s = str(v); if (!s) return "";
+  let y, mo, da, m;
+  if ((m = s.match(/^(\d{4})[-\/.](\d{1,2})[-\/.](\d{1,2})/))){ y = +m[1]; mo = +m[2]; da = +m[3]; }
+  else if ((m = s.match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2,4})$/))){ da = +m[1]; mo = +m[2]; y = +m[3]; if (y < 100) y += y >= 40 ? 2500 : 2000; }
+  else return null;
+  if (y > 2400) y -= 543;
+  const t = new Date(y, mo-1, da);
+  if (t.getMonth() !== mo-1 || t.getDate() !== da) return null;
+  return isoOf(y, mo, da);
+}
+function numCell(v){
+  if (v === "" || v == null) return "";
+  if (typeof v === "number") return money(v);
+  const n = parseFloat(String(v).replace(/[,\s฿]/g,""));
+  return isFinite(n) ? money(n) : null;
+}
+const digits = (v, len) => typeof v === "number" ? String(Math.round(v)).padStart(len,"0") : str(v);
+function branchOf(v){
+  const s = str(v);
+  if (!s || /ใหญ่|head|hq/i.test(s)) return {branchType:"hq", branchNo:""};
+  const d = s.replace(/\D/g,"");
+  if (!d || +d === 0) return {branchType:"hq", branchNo:""};
+  return {branchType:"branch", branchNo:d.padStart(5,"0")};
+}
+
+function parseWorkbook(wb){
+  const out = {lines:[], customers:[], products:[], warns:[], sheets:[]};
+  wb.SheetNames.forEach(name => {
+    const ws = wb.Sheets[name]; if (!ws || !ws["!ref"]) return;
+    const startRow = XLSX.utils.decode_range(ws["!ref"]).s.r;
+    const aoa = XLSX.utils.sheet_to_json(ws, {header:1, raw:true, defval:"", blankrows:true});
+    const h = findHeader(aoa); if (!h) return;
+    const M = h.map;
+    const type = M.qty != null ? "items" : (M.custName != null || M.addr != null) ? "customers" : (M.code != null ? "products" : null);
+    if (!type) return;
+    out.sheets.push(name);
+    let curInv = "";
+    for (let i = h.row + 1; i < aoa.length; i++){
+      const row = aoa[i] || [];
+      if (!row.some(c => str(c) !== "")) continue;
+      const g = k => M[k] == null ? "" : row[M[k]];
+      const where = "ชีต “" + name + "” แถว " + (startRow + i + 1);
+      if (type === "items"){
+        const inv = str(g("inv")); if (inv) curInv = inv;
+        const it = blankItem(str(g("unit")) || "PCS");
+        it.code = str(g("code")); it.desc = str(g("desc")); it.pn = str(g("pn")); it.po = str(g("po"));
+        for (const k of ["qty","price"]){
+          const v = numCell(g(k));
+          if (v === null){ out.warns.push(where + ": " + (k === "qty" ? "จำนวน" : "ราคา") + " “" + str(g(k)) + "” ไม่ใช่ตัวเลข ข้ามช่องนี้"); it[k] = ""; }
+          else it[k] = v;
+        }
+        const dv = g("date"), date = dv === "" ? "" : excelDate(dv);
+        if (date === null) out.warns.push(where + ": อ่านวันที่ “" + str(dv) + "” ไม่ได้ ใช้รูปแบบ วว/ดด/ปปปป");
+        out.lines.push({inv:curInv, date:date || "", custCode:str(g("custCode")), custName:str(g("custName")),
+          headPO:str(g("headPO")), ref:str(g("ref")), term:str(g("term")), remark:str(g("remark")), vat:str(g("vat")).replace("%",""),
+          addr:str(g("addr")), tax:g("tax") === "" ? "" : digits(g("tax"),13), branch:g("branch"), it, where});
+      } else if (type === "customers"){
+        const c = Object.assign(blankCust(), {code:str(g("custCode")), name:str(g("custName")), addr:str(g("addr")),
+          tax:g("tax") === "" ? "" : digits(g("tax"),13), contact:str(g("contact"))}, branchOf(g("branch")));
+        const term = str(g("term")); if (term) c.term = term;
+        if (c.name || c.code) out.customers.push(c);
+      } else {
+        const code = str(g("code")); if (!code) continue;
+        const pr = numCell(g("price"));
+        out.products.push({code, desc:str(g("desc")), pn:str(g("pn")), unit:str(g("unit")), price: pr === null ? "" : pr});
+      }
+    }
+  });
+  return out;
+}
+
+function buildInvoices(p){
+  const base = S;
+  const groups = new Map();
+  p.lines.forEach(l => { if (!groups.has(l.inv)) groups.set(l.inv, []); groups.get(l.inv).push(l); });
+  const single = groups.size === 1;
+  const invs = [];
+  groups.forEach((ls, key) => {
+    const first = k => { const r = ls.find(l => str(l[k]) !== ""); return r ? r[k] : ""; };
+    const inv = blankInvoice();
+    inv.vat = first("vat") || base.vat;
+    inv.sign = clone(base.sign);
+    inv.doc.type = base.doc.type; inv.doc.copy = base.doc.copy; inv.doc.era = base.doc.era;
+    inv.doc.no = key || (single ? base.doc.no : "");
+    inv.doc.date = first("date") || (single ? base.doc.date : isoToday());
+    inv.doc.po = first("headPO"); inv.doc.ref = first("ref"); inv.doc.remark = first("remark");
+    const code = first("custCode"), name = first("custName");
+    const known = code ? DB.customers.find(c => str(c.code).toLowerCase() === code.toLowerCase())
+                       : name ? DB.customers.find(c => str(c.name) === name) : null;
+    if (known){ inv.cust = Object.assign(blankCust(), known); delete inv.cust.term; }
+    else if (code || name){
+      inv.cust = Object.assign(blankCust(), {code, name, addr:first("addr"), tax:first("tax")}, branchOf(first("branch")));
+      if (!name) p.warns.push("ใบ " + (key || "ที่นำเข้า") + ": ไม่พบรหัสลูกค้า “" + code + "” ในชีตลูกค้าหรือรายชื่อที่บันทึกไว้ กรอกข้อมูลลูกค้าเพิ่มในฟอร์ม");
+    }
+    else if (single) inv.cust = clone(base.cust);
+    else p.warns.push("ใบ " + key + ": ไม่มีรหัสหรือชื่อลูกค้า");
+    inv.doc.term = first("term") || (known && known.term) || base.doc.term;
+    inv.items = ls.map(l => l.it).filter(hasContent);
+    inv.items.forEach(it => {
+      if (it.code && !DB.catalog[it.code] && (!it.desc || it.price === "")) p.warns.push("ใบ " + (key || "ที่นำเข้า") + ": ไม่พบรหัสสินค้า “" + it.code + "” ในชีตสินค้า ชื่อหรือราคาอาจว่าง");
+      fillFromCatalog(it);
+    });
+    if (!inv.items.length) inv.items = [blankItem()];
+    invs.push(inv);
+  });
+  return invs;
+}
+
+function importFile(f){
+  if (!window.XLSX){ showResult(false, "โหลดตัวอ่าน Excel ไม่ได้ ตรวจสอบว่าต่ออินเทอร์เน็ตอยู่ แล้วรีเฟรชหน้านี้"); return; }
+  const rd = new FileReader();
+  rd.onload = () => {
+    let wb;
+    try { wb = XLSX.read(new Uint8Array(rd.result), /\.csv$/i.test(f.name) ? {type:"array", raw:true, codepage:65001} : {type:"array"}); }
+    catch(err){ showResult(false, "เปิดไฟล์ “" + f.name + "” ไม่ได้ ต้องเป็นไฟล์ .xlsx .xls หรือ .csv"); return; }
+    const p = parseWorkbook(wb);
+    if (!p.sheets.length){ showResult(false, "ไม่พบหัวคอลัมน์ที่รู้จักในไฟล์ “" + f.name + "” ลองใช้หัวคอลัมน์ตามแม่แบบ Excel"); return; }
+    p.customers.forEach(upsertCustomer);
+    p.products.forEach(pr => { DB.catalog[pr.code] = Object.assign({}, DB.catalog[pr.code] || {}, Object.fromEntries(Object.entries({desc:pr.desc,pn:pr.pn,unit:pr.unit,price:pr.price}).filter(([,v]) => v !== ""))); });
+    renderCustomers(); renderCatalog();
+    const parts = [];
+    let invs = [];
+    if (p.lines.length){
+      invs = buildInvoices(p);
+      invs.forEach(inv => inv.items.forEach(learn));
+      if (invs.length > 1){ DB.batch = invs; DB.batchIdx = 0; S = invs[0]; }
+      else { DB.batch = []; DB.batchIdx = -1; S = invs[0]; }
+      const nItems = invs.reduce((a,b) => a + b.items.filter(hasContent).length, 0);
+      parts.push(invs.length > 1 ? invs.length + " ใบ " + nItems + " รายการ" : nItems + " รายการลงในใบปัจจุบัน");
+      fillForm(); renderItems();
+    }
+    if (p.customers.length) parts.push("ลูกค้า " + p.customers.length + " ราย");
+    if (p.products.length) parts.push("สินค้า " + p.products.length + " รายการ");
+    showResult(true, "นำเข้าจาก “" + f.name + "”: " + parts.join(" · "), p.warns);
+    changed();
+    setStatus("นำเข้า Excel แล้ว");
+  };
+  rd.onerror = () => showResult(false, "อ่านไฟล์ “" + f.name + "” ไม่ได้");
+  rd.readAsArrayBuffer(f);
+}
+function showResult(ok, msg, warns){
+  const r = $("#impResult");
+  r.hidden = false; r.classList.toggle("bad", !ok || !!(warns && warns.length));
+  const w = (warns || []).slice(0, 8).map(x => "<li>" + esc(x) + "</li>").join("");
+  const more = warns && warns.length > 8 ? "<li>และอีก " + (warns.length - 8) + " ข้อ</li>" : "";
+  r.innerHTML = esc(msg) + (w ? "<ul>" + w + more + "</ul>" : "");
+  $("#secImport").open = true;
+}
+window.__parseWorkbook = parseWorkbook;
+
+const pickXls = () => $("#xlsFile").click();
+$("#drop").addEventListener("click", pickXls);
+$("#drop").addEventListener("keydown", e => { if (e.key === "Enter" || e.key === " "){ e.preventDefault(); pickXls(); } });
+$("#btnImpTop").addEventListener("click", () => { $("#secImport").open = true; pickXls(); });
+$("#xlsFile").addEventListener("change", e => { const f = e.target.files[0]; if (f) importFile(f); e.target.value = ""; });
+let dragDepth = 0;
+window.addEventListener("dragenter", e => { if (e.dataTransfer && [...e.dataTransfer.types].includes("Files")){ dragDepth++; document.body.classList.add("dragging"); } });
+window.addEventListener("dragleave", () => { if (--dragDepth <= 0){ dragDepth = 0; document.body.classList.remove("dragging"); } });
+window.addEventListener("dragover", e => { if (e.dataTransfer && [...e.dataTransfer.types].includes("Files")) e.preventDefault(); });
+window.addEventListener("drop", e => {
+  dragDepth = 0; document.body.classList.remove("dragging");
+  const f = e.dataTransfer && e.dataTransfer.files[0]; if (!f) return;
+  e.preventDefault();
+  if (/\.(xlsx|xls|xlsm|csv)$/i.test(f.name)) importFile(f);
+  else setStatus("ลากได้เฉพาะไฟล์ Excel (.xlsx .xls .csv)");
+});
+
+$("#btnTemplate").addEventListener("click", () => {
+  if (!window.XLSX){ showResult(false, "โหลดตัวสร้างไฟล์ Excel ไม่ได้ ตรวจสอบว่าต่ออินเทอร์เน็ตอยู่ แล้วรีเฟรชหน้านี้"); return; }
+  const wb = XLSX.utils.book_new();
+  const sheet = (rows, widths) => { const ws = XLSX.utils.aoa_to_sheet(rows); ws["!cols"] = widths.map(w => ({wch:w})); return ws; };
+  XLSX.utils.book_append_sheet(wb, sheet([
+    ["เลขที่ Invoice","วันที่","รหัสลูกค้า","P/O No.","Ref No.","รหัสสินค้า","ชื่อสินค้า (EN)","P/N ลูกค้า","เลขที่ PO","จำนวน","หน่วย","ราคา/หน่วย","หมายเหตุ"],
+    ["INV2610-0001","05/10/2026","C0001","","","EX-1001","HOSE COMP, FUEL FEED","00000-AAA-001","PO-0001-110",7,"PCS",111.02,""],
+    ["INV2610-0001","","","","","EX-1002","","","PO-0001-120",4,"","",""],
+    ["INV2610-0002","06/10/2026","C0002","PO-778","","EX-1003","HOSE COMP, FUEL FEED","00000-AAA-003","PO-0001-130",35,"PCS",77.33,""],
+    ["INV2610-0002","","","","","EX-1004","","","PO-0001-140",14,"","",""]
+  ], [15,12,11,11,10,13,26,16,14,8,7,11,16]), "รายการ");
+  XLSX.utils.book_append_sheet(wb, sheet([
+    ["รหัสลูกค้า","ชื่อลูกค้า","ที่อยู่","เลขประจำตัวผู้เสียภาษี","สาขา","ผู้ติดต่อ","เครดิต (วัน)"],
+    ["C0001","บริษัท ลูกค้าตัวอย่าง จำกัด","123 หมู่ 4 ถนนตัวอย่าง ตำบลตัวอย่าง อำเภอเมือง จังหวัดฉะเชิงเทรา 24000","0000000000000","00001","",30],
+    ["C0002","บริษัท ตัวอย่างสอง จำกัด","45 ถนนตัวอย่าง แขวงตัวอย่าง เขตตัวอย่าง กรุงเทพมหานคร 10000","0000000000001","สำนักงานใหญ่","",60]
+  ], [11,30,60,20,14,14,11]), "ลูกค้า");
+  XLSX.utils.book_append_sheet(wb, sheet([
+    ["รหัสสินค้า","ชื่อสินค้า (EN)","P/N ลูกค้า","หน่วย","ราคา/หน่วย"],
+    ["EX-1001","HOSE COMP, FUEL FEED","00000-AAA-001","PCS",111.02],
+    ["EX-1002","HOSE COMP, FUEL FEED","00000-AAA-002","PCS",73.27],
+    ["EX-1003","HOSE COMP, FUEL FEED","00000-AAA-003","PCS",77.33],
+    ["EX-1004","HOSE COMP, FUEL FEED","00000-AAA-004","PCS",126.90]
+  ], [13,28,18,8,11]), "สินค้า");
+  try { XLSX.writeFile(wb, "invoice-template.xlsx"); setStatus("ดาวน์โหลดแม่แบบแล้ว"); }
+  catch(err){ showResult(false, "ดาวน์โหลดแม่แบบไม่ได้ในหน้านี้ ลองเปิดโปรแกรมจากไฟล์หรือเว็บไซต์ของคุณเอง"); }
+});
+
 /* ---------- update loop ---------- */
 let raf = 0;
 function changed(){
   updateItemAmounts();
   cancelAnimationFrame(raf);
-  raf = requestAnimationFrame(() => { const c = renderPreview(); renderSummary(c); fitZoom(); });
+  raf = requestAnimationFrame(() => { const c = renderPreview(); renderSummary(c); renderBatch(); fitZoom(); });
   save();
 }
 function fitZoom(){
   const pv = $("#preview");
   if (pv.offsetParent === null) return;
   const avail = pv.clientWidth - 32, sheetPx = 210 * 96 / 25.4;
-  const z = Math.min(1, Math.max(0.3, avail / sheetPx));
-  pagesEl.style.setProperty("--z", z.toFixed(3));
+  pagesEl.style.setProperty("--z", Math.min(1, Math.max(0.3, avail / sheetPx)).toFixed(3));
 }
 window.addEventListener("resize", fitZoom);
 
 /* ---------- toolbar ---------- */
 $("#btnPrint").addEventListener("click", () => {
-  if (!S.seller.th.trim()) $("#secSeller").open = true;
+  cancelAnimationFrame(raf); const c = renderPreview(); renderSummary(c);
   window.print();
 });
 function armed(btn, label, action){
@@ -754,19 +1099,22 @@ function armed(btn, label, action){
   });
 }
 armed($("#btnNew"), "ใบใหม่ (เลขถัดไป)", () => {
-  const m = String(S.doc.no||"").match(/^(.*?)(\d+)(\D*)$/);
+  const last = DB.batch.length ? DB.batch[DB.batch.length-1].doc.no : S.doc.no;
+  const nx = clone(S); DB.batchIdx = -1; S = nx;
+  const m = String(last||"").match(/^(.*?)(\d+)(\D*)$/);
   if (m) S.doc.no = m[1] + String(+m[2]+1).padStart(m[2].length,"0") + m[3];
   Object.assign(S.doc, {date:isoToday(), po:"", ref:"", remark:""});
   S.items = [blankItem()];
   fillForm(); renderItems(); changed();
-  $("#status").textContent = "เริ่มใบใหม่เลขที่ " + S.doc.no;
+  setStatus("เริ่มใบใหม่เลขที่ " + S.doc.no);
 });
 armed($("#btnReset"), "ล้างทั้งหมด", () => {
-  S = blankInvoice(); $("#secSeller").open = true;
+  DB.seller = blankSeller(); DB.batch = []; DB.batchIdx = -1; S = blankInvoice();
+  $("#secSeller").open = true; $("#impResult").hidden = true;
   fillForm(); renderItems(); changed();
 });
 $("#btnExport").addEventListener("click", () => {
-  const blob = new Blob([JSON.stringify({invoice:S, customers:DB.customers, catalog:DB.catalog}, null, 2)], {type:"application/json"});
+  const blob = new Blob([JSON.stringify({seller:DB.seller, invoice:S, batch:DB.batch, batchIdx:DB.batchIdx, customers:DB.customers, catalog:DB.catalog}, null, 2)], {type:"application/json"});
   const a = document.createElement("a");
   a.href = URL.createObjectURL(blob);
   a.download = "invoice-" + (S.doc.no || "data").replace(/[^\w\-]+/g,"_") + ".json";
@@ -782,12 +1130,16 @@ $("#jsonFile").addEventListener("change", e => {
       const d = JSON.parse(rd.result);
       const inv = d.invoice || d;
       if (!inv || !inv.doc || !Array.isArray(inv.items)) throw new Error();
-      S = merge(blankInvoice(), inv);
-      if (Array.isArray(d.customers)) d.customers.forEach(c => { if (!DB.customers.some(x => x.code === c.code && x.name === c.name)) DB.customers.push(c); });
+      const seller = d.seller || inv.seller;
+      if (seller) DB.seller = Object.assign(blankSeller(), seller);
+      DB.batch = Array.isArray(d.batch) ? d.batch.map(b => merge(blankInvoice(), b)) : [];
+      DB.batchIdx = DB.batch.length && d.batchIdx >= 0 && DB.batch[d.batchIdx] ? d.batchIdx : -1;
+      S = DB.batchIdx >= 0 ? DB.batch[DB.batchIdx] : merge(blankInvoice(), inv);
+      if (Array.isArray(d.customers)) d.customers.forEach(upsertCustomer);
       if (d.catalog && typeof d.catalog === "object") Object.assign(DB.catalog, d.catalog);
       renderCustomers(); renderCatalog(); fillForm(); renderItems(); changed();
-      $("#status").textContent = "เปิดไฟล์ " + f.name + " แล้ว";
-    } catch(err){ $("#status").textContent = "เปิดไฟล์ไม่ได้ ต้องเป็นไฟล์ .json ที่บันทึกจากโปรแกรมนี้"; }
+      setStatus("เปิดไฟล์ " + f.name + " แล้ว");
+    } catch(err){ setStatus("เปิดไฟล์ไม่ได้ ต้องเป็นไฟล์ .json ที่บันทึกจากโปรแกรมนี้"); }
   };
   rd.readAsText(f); e.target.value = "";
 });
@@ -798,8 +1150,7 @@ document.querySelectorAll(".tabs button").forEach(b => b.addEventListener("click
 }));
 
 /* ---------- start ---------- */
-if (!S.seller.th) $("#secSeller").open = true;
-
+if (!DB.seller.th) $("#secSeller").open = true;
 renderCustomers(); renderCatalog(); fillForm(); renderItems(); changed();
 if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => changed());
 })();
